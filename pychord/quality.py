@@ -1,7 +1,7 @@
 import copy
 import functools
 import re
-from typing import Any, ClassVar, Literal, overload
+from typing import Any, ClassVar
 
 from .constants.qualities import DEFAULT_QUALITIES
 from .constants.scales import RELATIVE_KEY_DICT
@@ -50,31 +50,6 @@ class Quality:
         The name of the quality, e.g. ``"maj"``, ``"m7"``.
         """
         return self._quality
-
-    @overload
-    def get_components(self, root: str, visible: Literal[True]) -> list[str]: ...
-
-    @overload
-    def get_components(self, root: str, visible: Literal[False]) -> list[int]: ...
-
-    @overload
-    def get_components(self, root: str, visible: bool) -> list[str] | list[int]: ...
-
-    def get_components(
-        self, root: str = "C", visible: bool = False
-    ) -> list[str] | list[int]:
-        """Get components of chord quality
-
-        :param str root: the root note of the chord
-        :param bool visible: returns the name of notes if True
-        :rtype: list[str|int]
-        :return: components of chord quality
-        """
-        if visible:
-            return [_apply_interval_to_note(root, i) for i in self._intervals]
-        else:
-            root_val = note_to_val(root)
-            return [v + root_val for v in self.components]
 
 
 class QualityManager:

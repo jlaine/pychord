@@ -2,7 +2,7 @@ from typing import Any, Literal, overload
 
 from .constants.scales import RELATIVE_KEY_DICT
 from .parser import parse, parse_scale
-from .quality import QualityManager, Quality, scale_notes
+from .quality import QualityManager, Quality, scale_notes, _apply_interval_to_note
 from .utils import augment, diminish, transpose_note, note_to_val
 
 
@@ -133,6 +133,34 @@ class Chord:
         return self._chord
 
     @property
+    def notes(self) -> list[str]:
+        """
+        The names of the notes that make up the chord.
+        """
+        notes = [
+            _apply_interval_to_note(self._root, i) for i in self._quality._intervals
+        ]
+        if self._on:
+            notes = [n for n in notes if n != self._on]
+            notes.insert(0, self._on)
+        return notes
+
+    @property
+    def pitches(self) -> list[int]:
+        """
+        The pitches of the notes that make up the chord.
+        """
+        root_val = note_to_val(self._root)
+        pitches = [v + root_val for v in self._quality.components]
+        if self._on:
+            on_value = note_to_val(self._on)
+            pitches = [c for c in pitches if c % 12 != on_value % 12]
+            if on_value > pitches[0]:
+                on_value -= 12
+            pitches.insert(0, on_value)
+        return pitches
+
+    @property
     def root(self) -> str:
         """
         The root note of the chord, e.g. ``"C"``, ``"A"``, ``"F#"``.
@@ -189,20 +217,9 @@ on={self._on}"""
         :param visible: Returns the note names if ``True``, the note pitches otherwise.
         """
         if visible:
-            notes = self._quality.get_components(root=self._root, visible=True)
-            if self._on:
-                notes = [n for n in notes if n != self._on]
-                notes.insert(0, self._on)
-            return notes
+            return self.notes
         else:
-            components = self._quality.get_components(root=self._root, visible=False)
-            if self._on:
-                on_value = note_to_val(self._on)
-                components = [c for c in components if c % 12 != on_value % 12]
-                if on_value > components[0]:
-                    on_value -= 12
-                components.insert(0, on_value)
-            return components
+            return self.pitches
 
     def components_with_pitch(self, root_pitch: int) -> list[str]:
         """
@@ -210,11 +227,11 @@ on={self._on}"""
 
         :param root_pitch: The pitch of the root note.
         """
-        components = self.components(visible=False)
-        notes = self.components(visible=True)
-        if components[0] < 0:
-            components = [c + 12 for c in components]
-        return [f"{n}{root_pitch + c // 12}" for (n, c) in zip(notes, components)]
+        notes = self.notes
+        pitches = self.pitches
+        if pitches[0] < 0:
+            pitches = [c + 12 for c in pitches]
+        return [f"{n}{root_pitch + c // 12}" for (n, c) in zip(notes, pitches)]
 
     def _reconfigure_chord(self) -> None:
         self._chord = "{}{}{}".format(
